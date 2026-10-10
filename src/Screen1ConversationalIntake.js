@@ -14,7 +14,7 @@ import {
 import { theme } from './theme';
 import { sendChatMessage } from './services/api';
 
-export function Screen1ConversationalIntake({ onExtractTrip, language, onToggleLanguage }) {
+export function Screen1ConversationalIntake({ onExtractTrip, onOpenStays, language, onToggleLanguage }) {
   const isTe = language === 'te';
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState([]);
@@ -112,6 +112,20 @@ export function Screen1ConversationalIntake({ onExtractTrip, language, onToggleL
           <Text style={styles.landingSubtitle}>
             {isTe ? 'మీరు ఎక్కడికి వెళ్లాలని ప్లాన్ చేస్తున్నారు?' : 'Where are you planning to go?'}
           </Text>
+
+          {/* Quick Stays / Restaurants Recommendation Badge */}
+          {onOpenStays && (
+            <TouchableOpacity style={styles.topStaysCardBadge} onPress={onOpenStays}>
+              <View style={styles.topStaysBadgeLeft}>
+                <Text style={styles.topStaysBadgeEmoji}>🛏️</Text>
+                <View>
+                  <Text style={styles.topStaysBadgeTitle}>Top 3 Recommended Stays</Text>
+                  <Text style={styles.topStaysBadgeSub}>Based on real guest reviews & proximity</Text>
+                </View>
+              </View>
+              <Text style={styles.topStaysBadgeArrow}>›</Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : (
         /* Message Stream */
@@ -163,14 +177,25 @@ export function Screen1ConversationalIntake({ onExtractTrip, language, onToggleL
                         </Text>
                       </View>
 
-                      <TouchableOpacity
-                        style={styles.reviewTripBtn}
-                        onPress={() => onExtractTrip(msg.intent.rawInput || msg.text)}
-                      >
-                        <Text style={styles.reviewTripBtnText}>
-                          {isTe ? 'ప్రయాణ వివరాలు సమీక్షించు ➔' : 'Review & Search Routes ➔'}
-                        </Text>
-                      </TouchableOpacity>
+                      <View style={styles.intentActionsRow}>
+                        <TouchableOpacity
+                          style={styles.reviewTripBtn}
+                          onPress={() => onExtractTrip(msg.intent.rawInput || msg.text)}
+                        >
+                          <Text style={styles.reviewTripBtnText}>
+                            {isTe ? 'ప్రయాణ వివరాలు సమీక్షించు ➔' : 'Review & Search Routes ➔'}
+                          </Text>
+                        </TouchableOpacity>
+
+                        {onOpenStays && (
+                          <TouchableOpacity
+                            style={styles.staysBtnSecondary}
+                            onPress={onOpenStays}
+                          >
+                            <Text style={styles.staysBtnSecondaryText}>🛏️ Top Stays</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
                   )}
 
@@ -308,6 +333,43 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#64748B',
     textAlign: 'center',
+    marginBottom: 24,
+  },
+  topStaysCardBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    width: '100%',
+    maxWidth: 340,
+  },
+  topStaysBadgeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  topStaysBadgeEmoji: {
+    fontSize: 22,
+  },
+  topStaysBadgeTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E3A8A',
+  },
+  topStaysBadgeSub: {
+    fontSize: 11,
+    color: '#3B82F6',
+  },
+  topStaysBadgeArrow: {
+    fontSize: 20,
+    color: '#2563EB',
+    fontWeight: '700',
   },
   scrollArea: {
     flex: 1,
@@ -391,6 +453,9 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 2,
   },
+  intentActionsRow: {
+    gap: 8,
+  },
   reviewTripBtn: {
     backgroundColor: '#0284C7',
     paddingVertical: 10,
@@ -401,6 +466,19 @@ const styles = StyleSheet.create({
   reviewTripBtnText: {
     color: '#FFFFFF',
     fontSize: 13,
+    fontWeight: '700',
+  },
+  staysBtnSecondary: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  staysBtnSecondaryText: {
+    color: '#2563EB',
+    fontSize: 12,
     fontWeight: '700',
   },
   msgTime: {

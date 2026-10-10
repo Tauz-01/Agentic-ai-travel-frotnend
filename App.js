@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, ActivityIndicator } from 'react-native';
+import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
 import { theme } from './src/theme';
 import {
   getInitialData,
@@ -11,7 +11,7 @@ import {
 } from './src/services/api';
 import { parseIntentFromInput } from './src/transportEngine';
 
-// 8 Execution Screens
+// Execution Screens
 import { Screen1ConversationalIntake } from './src/Screen1ConversationalIntake';
 import { Screen2ReviewDraft } from './src/Screen2ReviewDraft';
 import { Screen3Clarification } from './src/Screen3Clarification';
@@ -20,11 +20,14 @@ import { Screen5ItineraryDetails } from './src/Screen5ItineraryDetails';
 import { Screen6Checkout } from './src/Screen6Checkout';
 import { Screen7DisruptionMonitor } from './src/Screen7DisruptionMonitor';
 import { Screen8RecoveryApproval } from './src/Screen8RecoveryApproval';
+import { TopRecommendedStays } from './src/TopRecommendedStays';
+import { LoadingScreen } from './src/LoadingScreen';
 
 export default function App() {
   const [currentStage, setCurrentStage] = useState(1);
   const [language, setLanguage] = useState('en');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('Processing async backend task...');
 
   // Authoritative State
   const [tripIntent, setTripIntent] = useState(parseIntentFromInput('', 'en'));
@@ -53,6 +56,7 @@ export default function App() {
 
   // Stage 1 -> 2: Extract Trip Intent via API
   const handleExtractTrip = async (inputPrompt) => {
+    setLoadingMessage('AI Concierge processing query...');
     setIsLoading(true);
     try {
       const res = await sendChatMessage(inputPrompt, language);
@@ -73,6 +77,7 @@ export default function App() {
 
   // Stage 2 -> 4: Confirm Draft & Search Routes via API
   const handleConfirmDraftAndSearch = async () => {
+    setLoadingMessage('Searching route options across operators...');
     setIsLoading(true);
     try {
       const res = await fetchTripSearchResults(tripIntent);
@@ -93,6 +98,7 @@ export default function App() {
   // Stage 3 -> 4: Save Clarification & Search via API
   const handleSaveClarification = async (updatedIntent) => {
     setTripIntent(updatedIntent);
+    setLoadingMessage('Applying constraints & calculating fares...');
     setIsLoading(true);
     try {
       const res = await fetchTripSearchResults(updatedIntent);
@@ -124,6 +130,7 @@ export default function App() {
 
   // Stage 7: Trigger Predefined Delay Scenario via API
   const handleTriggerDelay = async () => {
+    setLoadingMessage('Analyzing disruption corridor & ETA impact...');
     setIsLoading(true);
     try {
       const res = await fetchDisruptionStatus(activeItinerary || selectedOption, 50);
@@ -137,6 +144,7 @@ export default function App() {
 
   // Stage 7 -> 8: Start Recovery Search via API
   const handleStartRecovery = async () => {
+    setLoadingMessage('Generating alternative recovery proposals...');
     setIsLoading(true);
     try {
       const res = await fetchRecoveryOptions(activeItinerary || selectedOption, disruption, tripIntent);
@@ -153,6 +161,7 @@ export default function App() {
 
   // Stage 8 -> 7: Approve Recovery Proposal via API
   const handleApproveProposal = async () => {
+    setLoadingMessage('Committing itinerary revision to backend...');
     setIsLoading(true);
     try {
       await approveItineraryChange(activeProposal?.proposalId, activeItinerary?.id);
@@ -191,6 +200,23 @@ export default function App() {
     setCurrentStage(7);
   };
 
+  const stageLabels = [
+    { stage: 1, label: 'Stage 1 (Chat)' },
+    { stage: 2, label: 'Stage 2 (Review)' },
+    { stage: 3, label: 'Stage 3 (Clarify)' },
+    { stage: 4, label: 'Stage 4 (Routes)' },
+    { stage: 5, label: 'Stage 5 (Details)' },
+    { stage: 6, label: 'Stage 6 (Checkout)' },
+    { stage: 7, label: 'Stage 7 (Monitor)' },
+    { stage: 8, label: 'Stage 8 (Approval)' },
+    { stage: 9, label: 'Top 3 Stays' },
+  ];
+
+  // Render Full Screen Loading Page when async tasks are processing
+  if (isLoading) {
+    return <LoadingScreen message={loadingMessage} />;
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
@@ -198,40 +224,34 @@ export default function App() {
       {/* Stage Navigation Stepper Bar */}
       <View style={styles.stepperBar}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stepperScroll}>
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+          {stageLabels.map((item) => (
             <TouchableOpacity
-              key={s}
+              key={item.stage}
               style={[
                 styles.stepChip,
-                currentStage === s && styles.stepChipActive,
-                currentStage > s && styles.stepChipCompleted
+                currentStage === item.stage && styles.stepChipActive,
+                currentStage > item.stage && currentStage !== 9 && styles.stepChipCompleted,
+                item.stage === 9 && styles.stepChipSpecial
               ]}
-              onPress={() => setCurrentStage(s)}
+              onPress={() => setCurrentStage(item.stage)}
             >
               <Text style={[
                 styles.stepChipText,
-                currentStage === s && styles.stepChipTextActive
+                currentStage === item.stage && styles.stepChipTextActive
               ]}>
-                Stage {s}
+                {item.label}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
 
-      {/* Loading Overlay */}
-      {isLoading && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#0284C7" />
-          <Text style={styles.loadingOverlayText}>Communicating with backend...</Text>
-        </View>
-      )}
-
       {/* Main Viewport Router */}
       <View style={styles.container}>
         {currentStage === 1 && (
           <Screen1ConversationalIntake
             onExtractTrip={handleExtractTrip}
+            onOpenStays={() => setCurrentStage(9)}
             language={language}
             onToggleLanguage={toggleLanguage}
           />
@@ -304,6 +324,14 @@ export default function App() {
             onToggleLanguage={toggleLanguage}
           />
         )}
+
+        {currentStage === 9 && (
+          <TopRecommendedStays
+            onBack={() => setCurrentStage(1)}
+            onSelectStay={(stay) => alert(`Selected ${stay.name} (₹${stay.price}/night).`)}
+            onChangePreferences={() => setCurrentStage(1)}
+          />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -329,24 +357,7 @@ const styles = StyleSheet.create({
   },
   stepChipActive: { backgroundColor: '#0284C7', borderColor: '#38BDF8' },
   stepChipCompleted: { backgroundColor: '#064E3B', borderColor: '#059669' },
+  stepChipSpecial: { backgroundColor: '#1E3A8A', borderColor: '#3B82F6' },
   stepChipText: { fontSize: 11, fontWeight: '600', color: '#94A3B8' },
   stepChipTextActive: { color: '#FFFFFF', fontWeight: '700' },
-  loadingOverlay: {
-    position: 'absolute',
-    top: 50,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
-    padding: 12,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 10,
-    zIndex: 999,
-  },
-  loadingOverlayText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  }
 });
